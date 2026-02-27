@@ -3,16 +3,27 @@
 #
 # Reads a SPEC.md and generates a complete multi-agent project.
 #
-# Usage: ./scaffold.sh <spec_file> <output_dir>
+# Usage:
+#   ./scaffold.sh <spec_file> <output_dir>            # GitHub mode (default)
+#   ./scaffold.sh <spec_file> <output_dir> --local    # Local mode (no GitHub needed)
 #
-# Requirements:
+# Requirements (GitHub mode):
 #   - claude CLI installed and authenticated
 #   - gh CLI installed and authenticated
 #   - git, jq
+#
+# Requirements (local mode):
+#   - claude CLI installed and authenticated
+#   - git
 set -euo pipefail
 
-SPEC_FILE="${1:?Usage: ./scaffold.sh <spec_file> <output_dir>}"
-OUTPUT_DIR="${2:?Usage: ./scaffold.sh <spec_file> <output_dir>}"
+SPEC_FILE="${1:?Usage: ./scaffold.sh <spec_file> <output_dir> [--local]}"
+OUTPUT_DIR="${2:?Usage: ./scaffold.sh <spec_file> <output_dir> [--local]}"
+MODE="github"
+if [[ "${3:-}" == "--local" ]]; then
+    MODE="local"
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATES_DIR="${SCRIPT_DIR}/templates"
 
@@ -24,6 +35,7 @@ fi
 echo "=== agentcook scaffold ==="
 echo "Spec:   $SPEC_FILE"
 echo "Output: $OUTPUT_DIR"
+echo "Mode:   $MODE"
 echo ""
 
 # ── Step 1: Parse the spec with Claude ────────────────────────────────────────
@@ -97,16 +109,43 @@ mkdir -p "${OUTPUT_DIR}"/{scripts,agents,agent_logs,worktrees,db}
 
 echo "Generating scripts..."
 
+QUEUE_SOURCE=$( [ "$MODE" = "github" ] && echo "GitHub Issues" || echo "\`ISSUES.md\`" )
+
 fill_template() {
     local src="$1"
     local dst="$2"
+    # Basic placeholder substitution
     sed \
         -e "s|{{PROJECT_NAME}}|${PROJECT_TITLE}|g" \
         -e "s|{{TMUX_SESSION}}|${TMUX_SESSION}|g" \
         -e "s|{{GITHUB_REPO}}|${GITHUB_REPO}|g" \
         -e "s|{{CYCLE_PAUSE}}|${CYCLE_PAUSE}|g" \
+        -e "s|{{MODE}}|${MODE}|g" \
+        -e "s|{{QUEUE_SOURCE}}|${QUEUE_SOURCE}|g" \
         "$src" > "$dst"
     chmod +x "$dst"
+}
+
+# Render conditional blocks {{#if GITHUB_MODE}} / {{#if LOCAL_MODE}} / {{/if}}
+render_conditional() {
+    local file="$1"
+    python3 - "$file" "$MODE" <<'PYEOF'
+import sys, re
+path, mode = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    content = f.read()
+# Remove blocks that don't match current mode
+if mode == "github":
+    content = re.sub(r'\{\{#if LOCAL_MODE\}\}.*?\{\{/if\}\}\n?', '', content, flags=re.DOTALL)
+    content = re.sub(r'\{\{#if GITHUB_MODE\}\}\n?', '', content)
+    content = re.sub(r'\{\{/if\}\}\n?', '', content)
+else:
+    content = re.sub(r'\{\{#if GITHUB_MODE\}\}.*?\{\{/if\}\}\n?', '', content, flags=re.DOTALL)
+    content = re.sub(r'\{\{#if LOCAL_MODE\}\}\n?', '', content)
+    content = re.sub(r'\{\{/if\}\}\n?', '', content)
+with open(path, 'w') as f:
+    f.write(content)
+PYEOF
 }
 
 fill_template "${TEMPLATES_DIR}/run.sh"                      "${OUTPUT_DIR}/run.sh"
@@ -114,6 +153,13 @@ fill_template "${TEMPLATES_DIR}/scripts/setup.sh"            "${OUTPUT_DIR}/scri
 fill_template "${TEMPLATES_DIR}/scripts/run_orchestrator.sh" "${OUTPUT_DIR}/scripts/run_orchestrator.sh"
 fill_template "${TEMPLATES_DIR}/scripts/run_agent.sh"        "${OUTPUT_DIR}/scripts/run_agent.sh"
 fill_template "${TEMPLATES_DIR}/scripts/dispatch_agent.sh"   "${OUTPUT_DIR}/scripts/dispatch_agent.sh"
+
+# In local mode, create ISSUES.md; in github mode it's not needed
+if [ "$MODE" = "local" ]; then
+    cp "${TEMPLATES_DIR}/ISSUES.md.tmpl" "${OUTPUT_DIR}/ISSUES.md"
+fi
+
+mkdir -p "${OUTPUT_DIR}/docs"
 
 # ── Step 4: Generate orchestrator prompt ──────────────────────────────────────
 
@@ -129,7 +175,10 @@ sed \
     -e "s|{{PROJECT_NAME}}|${PROJECT_TITLE}|g" \
     -e "s|{{TMUX_SESSION}}|${TMUX_SESSION}|g" \
     -e "s|{{AGENT_TABLE}}|${AGENT_TABLE}|g" \
+    -e "s|{{MODE}}|${MODE}|g" \
+    -e "s|{{QUEUE_SOURCE}}|${QUEUE_SOURCE}|g" \
     "${TEMPLATES_DIR}/agents/orchestrator.md" > "${OUTPUT_DIR}/agents/orchestrator.md"
+render_conditional "${OUTPUT_DIR}/agents/orchestrator.md"
 
 # ── Step 5: Generate per-agent prompts using Claude ───────────────────────────
 
@@ -321,8 +370,17 @@ echo ""
 echo "=== Done ==="
 echo ""
 echo "Generated: ${OUTPUT_DIR}/"
+echo "Mode:      ${MODE}"
 echo ""
+if [ "$MODE" = "github" ]; then
 echo "Next steps:"
 echo "  1. Set your GitHub repo:  export GITHUB_REPO=${GITHUB_REPO}"
 echo "  2. Push to GitHub:        gh repo create ${GITHUB_REPO} && git push -u origin main"
 echo "  3. Run:                   cd ${OUTPUT_DIR} && ./run.sh"
+else
+echo "Next steps (local mode — no GitHub needed):"
+echo "  1. Run:  cd ${OUTPUT_DIR} && ./run.sh"
+echo ""
+echo "  The orchestrator will create ISSUES.md on first cycle and start dispatching agents."
+echo "  All work stays local. Attach to watch: tmux attach -t ${TMUX_SESSION}"
+fi

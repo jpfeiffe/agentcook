@@ -3,7 +3,9 @@
 # Checks that all required tools and environment variables are present.
 set -euo pipefail
 
-echo "=== {{PROJECT_NAME}} Setup ==="
+MODE="${MODE:-{{MODE}}}"
+
+echo "=== {{PROJECT_NAME}} Setup (mode: ${MODE}) ==="
 echo ""
 
 PASS=0
@@ -37,15 +39,19 @@ check_env() {
 
 echo "Checking dependencies..."
 check_cmd "git"
-check_cmd "gh"
 check_cmd "tmux"
-check_cmd "jq"
-check_cmd "curl"
 check_cmd "claude"
+if [ "$MODE" = "github" ]; then
+    check_cmd "gh"
+    check_cmd "jq"
+    check_cmd "curl"
+fi
 
-echo ""
-echo "Checking environment..."
-check_env "GITHUB_REPO"
+if [ "$MODE" = "github" ]; then
+    echo ""
+    echo "Checking environment..."
+    check_env "GITHUB_REPO"
+fi
 
 echo ""
 echo "Checking git config..."
@@ -59,15 +65,17 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-echo ""
-echo "Checking gh auth..."
-if gh auth status &>/dev/null; then
-    echo "  [OK]      gh is authenticated"
-    PASS=$((PASS + 1))
-    git config --global credential.helper "$(gh auth git-credential)" 2>/dev/null || true
-else
-    echo "  [MISSING] gh not authenticated — run: gh auth login"
-    FAIL=$((FAIL + 1))
+if [ "$MODE" = "github" ]; then
+    echo ""
+    echo "Checking gh auth..."
+    if gh auth status &>/dev/null; then
+        echo "  [OK]      gh is authenticated"
+        PASS=$((PASS + 1))
+        git config --global credential.helper "$(gh auth git-credential)" 2>/dev/null || true
+    else
+        echo "  [MISSING] gh not authenticated — run: gh auth login"
+        FAIL=$((FAIL + 1))
+    fi
 fi
 
 echo ""

@@ -15,9 +15,13 @@ cd "$SCRIPT_DIR"
 
 CYCLE_PAUSE="${CYCLE_PAUSE:-300}"   # seconds between cycles (default 5 min)
 TMUX_SESSION="{{TMUX_SESSION}}"
+MODE="${MODE:-{{MODE}}}"            # github | local
 
 echo "=== {{PROJECT_NAME}} ==="
+echo "Mode:         ${MODE}"
+if [ "$MODE" = "github" ]; then
 echo "Repo:         ${GITHUB_REPO:-{{GITHUB_REPO}}}"
+fi
 echo "Cycle pause:  ${CYCLE_PAUSE}s"
 echo "tmux session: ${TMUX_SESSION}"
 echo "Time:         $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -35,7 +39,10 @@ tmux kill-session -t "$TMUX_SESSION" 2>/dev/null || true
 
 # Create tmux session
 tmux new-session -d -s "$TMUX_SESSION" -n "control"
+tmux set-environment -t "$TMUX_SESSION" MODE "$MODE"
+if [ "$MODE" = "github" ]; then
 tmux set-environment -t "$TMUX_SESSION" GITHUB_REPO "${GITHUB_REPO:-{{GITHUB_REPO}}}"
+fi
 # Unset CLAUDECODE so nested claude sessions can spawn
 tmux set-environment -u -t "$TMUX_SESSION" CLAUDECODE
 

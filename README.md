@@ -26,8 +26,11 @@ The generated system is stateless between cycles. GitHub is the memory.
 # 1. Write your spec
 vim SPEC.md
 
-# 2. Generate the project
+# 2a. Generate — GitHub mode (uses GitHub Issues, PRs, comments)
 ./scaffold.sh SPEC.md ./my-project
+
+# 2b. Generate — local mode (no GitHub, no gh CLI, everything stays on this machine)
+./scaffold.sh SPEC.md ./my-project --local
 
 # 3. Go
 cd my-project
@@ -85,10 +88,16 @@ HOST  (run.sh — while-true loop, sleep N seconds between cycles)
 
 ## Requirements
 
+**GitHub mode** (default):
 - `claude` CLI installed and authenticated
 - `gh` CLI installed and authenticated
 - `tmux`, `git`, `jq`, `curl`
 - A GitHub repo for your project
+
+**Local mode** (`--local`):
+- `claude` CLI installed and authenticated
+- `tmux`, `git`
+- No GitHub, no network access needed
 
 ---
 
