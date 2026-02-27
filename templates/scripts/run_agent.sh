@@ -11,6 +11,20 @@ TIMEOUT="${2:?Usage: run_agent.sh <agent_name> <timeout_seconds> [issue_number] 
 ISSUE_NUMBER="${3:-}"
 EXTRA_PROMPT="${4:-}"
 
+# Validate inputs to prevent path traversal and shell injection
+if [[ ! "$AGENT_NAME" =~ ^[a-z_][a-z0-9_]*$ ]]; then
+    echo "ERROR: Invalid agent name '${AGENT_NAME}'. Must match [a-z_][a-z0-9_]* (lowercase letters, digits, underscores)."
+    exit 1
+fi
+if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Invalid timeout '${TIMEOUT}'. Must be a positive integer."
+    exit 1
+fi
+if [[ -n "$ISSUE_NUMBER" && ! "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Invalid issue number '${ISSUE_NUMBER}'. Must be a positive integer."
+    exit 1
+fi
+
 # Resolve repo root (works from main repo or any worktree)
 resolve_repo_root() {
     local git_common

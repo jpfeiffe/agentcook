@@ -13,6 +13,20 @@ ISSUE_NUMBER="${3:-}"
 EXTRA_PROMPT="${4:-}"
 TMUX_SESSION="{{TMUX_SESSION}}"
 
+# Validate inputs to prevent shell injection via the tmux command string
+if [[ ! "$AGENT_NAME" =~ ^[a-z_][a-z0-9_]*$ ]]; then
+    echo "ERROR: Invalid agent name '${AGENT_NAME}'. Must match [a-z_][a-z0-9_]* (lowercase letters, digits, underscores)."
+    exit 1
+fi
+if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Invalid timeout '${TIMEOUT}'. Must be a positive integer."
+    exit 1
+fi
+if [[ -n "$ISSUE_NUMBER" && ! "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Invalid issue number '${ISSUE_NUMBER}'. Must be a positive integer."
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check for existing window (avoid double-dispatch)
@@ -21,7 +35,8 @@ if tmux list-windows -t "$TMUX_SESSION" 2>/dev/null | grep -q "^[0-9]*: ${AGENT_
     exit 0
 fi
 
-AGENT_CMD="bash ${SCRIPT_DIR}/run_agent.sh ${AGENT_NAME} ${TIMEOUT} ${ISSUE_NUMBER} $(printf '%q' "${EXTRA_PROMPT}")"
+# Build the agent command with properly quoted arguments
+AGENT_CMD="bash $(printf '%q' "${SCRIPT_DIR}/run_agent.sh") $(printf '%q' "${AGENT_NAME}") $(printf '%q' "${TIMEOUT}") $(printf '%q' "${ISSUE_NUMBER}") $(printf '%q' "${EXTRA_PROMPT}")"
 
 echo "[dispatch] Creating tmux window '${AGENT_NAME}' in session '${TMUX_SESSION}'"
 

@@ -114,15 +114,31 @@ QUEUE_SOURCE=$( [ "$MODE" = "github" ] && echo "GitHub Issues" || echo "\`ISSUES
 fill_template() {
     local src="$1"
     local dst="$2"
-    # Basic placeholder substitution
-    sed \
-        -e "s|{{PROJECT_NAME}}|${PROJECT_TITLE}|g" \
-        -e "s|{{TMUX_SESSION}}|${TMUX_SESSION}|g" \
-        -e "s|{{GITHUB_REPO}}|${GITHUB_REPO}|g" \
-        -e "s|{{CYCLE_PAUSE}}|${CYCLE_PAUSE}|g" \
-        -e "s|{{MODE}}|${MODE}|g" \
-        -e "s|{{QUEUE_SOURCE}}|${QUEUE_SOURCE}|g" \
-        "$src" > "$dst"
+    # Use Python for literal string replacement — avoids sed delimiter injection
+    # when project names or other values contain special characters (|, /, &, \n, etc.)
+    SCAFFOLD_PROJECT_TITLE="$PROJECT_TITLE" \
+    SCAFFOLD_TMUX_SESSION="$TMUX_SESSION" \
+    SCAFFOLD_GITHUB_REPO="$GITHUB_REPO" \
+    SCAFFOLD_CYCLE_PAUSE="$CYCLE_PAUSE" \
+    SCAFFOLD_MODE="$MODE" \
+    SCAFFOLD_QUEUE_SOURCE="$QUEUE_SOURCE" \
+    python3 - "$src" "$dst" <<'PYEOF'
+import sys, os
+src, dst = sys.argv[1], sys.argv[2]
+with open(src) as f:
+    content = f.read()
+for placeholder, envvar in [
+    ('{{PROJECT_NAME}}', 'SCAFFOLD_PROJECT_TITLE'),
+    ('{{TMUX_SESSION}}', 'SCAFFOLD_TMUX_SESSION'),
+    ('{{GITHUB_REPO}}',  'SCAFFOLD_GITHUB_REPO'),
+    ('{{CYCLE_PAUSE}}',  'SCAFFOLD_CYCLE_PAUSE'),
+    ('{{MODE}}',         'SCAFFOLD_MODE'),
+    ('{{QUEUE_SOURCE}}', 'SCAFFOLD_QUEUE_SOURCE'),
+]:
+    content = content.replace(placeholder, os.environ[envvar])
+with open(dst, 'w') as f:
+    f.write(content)
+PYEOF
     chmod +x "$dst"
 }
 
@@ -171,13 +187,27 @@ AGENT_TABLE=$(echo "$PARSED_JSON" | jq -r '
   ([.agents[] | "| `\(.name)` | \(.timeout_seconds)s | \(.model | split("-") | .[1]) | \(.role) |"] | join("\n"))
 ')
 
-sed \
-    -e "s|{{PROJECT_NAME}}|${PROJECT_TITLE}|g" \
-    -e "s|{{TMUX_SESSION}}|${TMUX_SESSION}|g" \
-    -e "s|{{AGENT_TABLE}}|${AGENT_TABLE}|g" \
-    -e "s|{{MODE}}|${MODE}|g" \
-    -e "s|{{QUEUE_SOURCE}}|${QUEUE_SOURCE}|g" \
-    "${TEMPLATES_DIR}/agents/orchestrator.md" > "${OUTPUT_DIR}/agents/orchestrator.md"
+SCAFFOLD_PROJECT_TITLE="$PROJECT_TITLE" \
+SCAFFOLD_TMUX_SESSION="$TMUX_SESSION" \
+SCAFFOLD_AGENT_TABLE="$AGENT_TABLE" \
+SCAFFOLD_MODE="$MODE" \
+SCAFFOLD_QUEUE_SOURCE="$QUEUE_SOURCE" \
+python3 - "${TEMPLATES_DIR}/agents/orchestrator.md" "${OUTPUT_DIR}/agents/orchestrator.md" <<'PYEOF'
+import sys, os
+src, dst = sys.argv[1], sys.argv[2]
+with open(src) as f:
+    content = f.read()
+for placeholder, envvar in [
+    ('{{PROJECT_NAME}}', 'SCAFFOLD_PROJECT_TITLE'),
+    ('{{TMUX_SESSION}}', 'SCAFFOLD_TMUX_SESSION'),
+    ('{{AGENT_TABLE}}',  'SCAFFOLD_AGENT_TABLE'),
+    ('{{MODE}}',         'SCAFFOLD_MODE'),
+    ('{{QUEUE_SOURCE}}', 'SCAFFOLD_QUEUE_SOURCE'),
+]:
+    content = content.replace(placeholder, os.environ[envvar])
+with open(dst, 'w') as f:
+    f.write(content)
+PYEOF
 render_conditional "${OUTPUT_DIR}/agents/orchestrator.md"
 
 # ── Step 5: Generate per-agent prompts using Claude ───────────────────────────
