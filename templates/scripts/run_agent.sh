@@ -40,6 +40,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(resolve_repo_root "$SCRIPT_DIR")"
 WORKTREE_DIR="${REPO_ROOT}/worktrees/${AGENT_NAME}"
 
+# Alias project-specific GitHub token so gh/git use the right credentials
+export GITHUB_TOKEN="${GITHUB_TOKEN_{{PROJECT_NAME_UPPER}}:-}"
+
 # Model selection: orchestrator and any "senior" agents get Opus, everyone else Sonnet
 case "$AGENT_NAME" in
     orchestrator|red_agent|security_agent) AGENT_MODEL="claude-opus-4-6" ;;
@@ -193,6 +196,7 @@ timeout --foreground --signal=TERM --kill-after=30 "$TIMEOUT" \
            -p "$PROMPT" \
            --model "$AGENT_MODEL" \
            --verbose \
+           </dev/null \
     2>&1 | tee "$LOGFILE" || true
 
 EXIT_CODE=${PIPESTATUS[0]}

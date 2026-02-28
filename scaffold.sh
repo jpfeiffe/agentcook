@@ -73,7 +73,7 @@ Output format:
 SPEC:
 ${SPEC_CONTENT}"
 
-PARSED=$(claude -p "$PARSE_PROMPT" --model claude-sonnet-4-6 2>/dev/null)
+PARSED=$(env -u CLAUDECODE claude -p "$PARSE_PROMPT" --model claude-sonnet-4-6 2>/dev/null)
 
 # Extract JSON (strip any surrounding text)
 PARSED_JSON=$(echo "$PARSED" | python3 -c "
@@ -95,6 +95,7 @@ PROJECT_TITLE=$(echo "$PARSED_JSON" | jq -r '.project_title')
 TMUX_SESSION=$(echo "$PARSED_JSON"  | jq -r '.tmux_session')
 GITHUB_REPO=$(echo "$PARSED_JSON"   | jq -r '.github_repo')
 CYCLE_PAUSE=$(echo "$PARSED_JSON"   | jq -r '.cycle_pause')
+PROJECT_NAME_UPPER=$(echo "$PROJECT_NAME" | tr '[:lower:]' '[:upper:]')
 
 echo "  Project: $PROJECT_TITLE ($PROJECT_NAME)"
 echo "  Session: $TMUX_SESSION"
@@ -117,6 +118,7 @@ fill_template() {
     # Use Python for literal string replacement — avoids sed delimiter injection
     # when project names or other values contain special characters (|, /, &, \n, etc.)
     SCAFFOLD_PROJECT_TITLE="$PROJECT_TITLE" \
+    SCAFFOLD_PROJECT_NAME_UPPER="$PROJECT_NAME_UPPER" \
     SCAFFOLD_TMUX_SESSION="$TMUX_SESSION" \
     SCAFFOLD_GITHUB_REPO="$GITHUB_REPO" \
     SCAFFOLD_CYCLE_PAUSE="$CYCLE_PAUSE" \
@@ -128,12 +130,13 @@ src, dst = sys.argv[1], sys.argv[2]
 with open(src) as f:
     content = f.read()
 for placeholder, envvar in [
-    ('{{PROJECT_NAME}}', 'SCAFFOLD_PROJECT_TITLE'),
-    ('{{TMUX_SESSION}}', 'SCAFFOLD_TMUX_SESSION'),
-    ('{{GITHUB_REPO}}',  'SCAFFOLD_GITHUB_REPO'),
-    ('{{CYCLE_PAUSE}}',  'SCAFFOLD_CYCLE_PAUSE'),
-    ('{{MODE}}',         'SCAFFOLD_MODE'),
-    ('{{QUEUE_SOURCE}}', 'SCAFFOLD_QUEUE_SOURCE'),
+    ('{{PROJECT_NAME}}',       'SCAFFOLD_PROJECT_TITLE'),
+    ('{{PROJECT_NAME_UPPER}}', 'SCAFFOLD_PROJECT_NAME_UPPER'),
+    ('{{TMUX_SESSION}}',       'SCAFFOLD_TMUX_SESSION'),
+    ('{{GITHUB_REPO}}',        'SCAFFOLD_GITHUB_REPO'),
+    ('{{CYCLE_PAUSE}}',        'SCAFFOLD_CYCLE_PAUSE'),
+    ('{{MODE}}',               'SCAFFOLD_MODE'),
+    ('{{QUEUE_SOURCE}}',       'SCAFFOLD_QUEUE_SOURCE'),
 ]:
     content = content.replace(placeholder, os.environ[envvar])
 with open(dst, 'w') as f:
@@ -188,6 +191,7 @@ AGENT_TABLE=$(echo "$PARSED_JSON" | jq -r '
 ')
 
 SCAFFOLD_PROJECT_TITLE="$PROJECT_TITLE" \
+SCAFFOLD_PROJECT_NAME_UPPER="$PROJECT_NAME_UPPER" \
 SCAFFOLD_TMUX_SESSION="$TMUX_SESSION" \
 SCAFFOLD_AGENT_TABLE="$AGENT_TABLE" \
 SCAFFOLD_MODE="$MODE" \
@@ -198,11 +202,12 @@ src, dst = sys.argv[1], sys.argv[2]
 with open(src) as f:
     content = f.read()
 for placeholder, envvar in [
-    ('{{PROJECT_NAME}}', 'SCAFFOLD_PROJECT_TITLE'),
-    ('{{TMUX_SESSION}}', 'SCAFFOLD_TMUX_SESSION'),
-    ('{{AGENT_TABLE}}',  'SCAFFOLD_AGENT_TABLE'),
-    ('{{MODE}}',         'SCAFFOLD_MODE'),
-    ('{{QUEUE_SOURCE}}', 'SCAFFOLD_QUEUE_SOURCE'),
+    ('{{PROJECT_NAME}}',       'SCAFFOLD_PROJECT_TITLE'),
+    ('{{PROJECT_NAME_UPPER}}', 'SCAFFOLD_PROJECT_NAME_UPPER'),
+    ('{{TMUX_SESSION}}',       'SCAFFOLD_TMUX_SESSION'),
+    ('{{AGENT_TABLE}}',        'SCAFFOLD_AGENT_TABLE'),
+    ('{{MODE}}',               'SCAFFOLD_MODE'),
+    ('{{QUEUE_SOURCE}}',       'SCAFFOLD_QUEUE_SOURCE'),
 ]:
     content = content.replace(placeholder, os.environ[envvar])
 with open(dst, 'w') as f:
@@ -283,7 +288,7 @@ Do not push to main directly. The orchestrator reviews and merges your PR.
 
 Output only the agent prompt — no preamble, no explanation."
 
-    claude -p "$AGENT_PROMPT" --model claude-sonnet-4-6 2>/dev/null \
+    env -u CLAUDECODE claude -p "$AGENT_PROMPT" --model claude-sonnet-4-6 2>/dev/null \
         > "${OUTPUT_DIR}/agents/${AGENT_NAME}.md" || {
         echo "  Warning: Claude failed for ${AGENT_NAME}, using template stub"
         cp "${TEMPLATES_DIR}/agents/agent.md.tmpl" "${OUTPUT_DIR}/agents/${AGENT_NAME}.md"
@@ -404,9 +409,12 @@ echo "Mode:      ${MODE}"
 echo ""
 if [ "$MODE" = "github" ]; then
 echo "Next steps:"
-echo "  1. Set your GitHub repo:  export GITHUB_REPO=${GITHUB_REPO}"
-echo "  2. Push to GitHub:        gh repo create ${GITHUB_REPO} && git push -u origin main"
-echo "  3. Run:                   cd ${OUTPUT_DIR} && ./run.sh"
+echo "  1. Set env vars:"
+echo "       export GITHUB_REPO=${GITHUB_REPO}"
+echo "       export GITHUB_TOKEN_${PROJECT_NAME_UPPER}=<your-github-token>"
+echo "  2. Push to GitHub:  gh repo create ${GITHUB_REPO} && git push -u origin main"
+echo "  3. Run:             cd ${OUTPUT_DIR} && nohup bash run.sh > /tmp/${TMUX_SESSION}.log 2>&1 &"
+echo "  4. Watch:           tmux attach -t ${TMUX_SESSION}"
 else
 echo "Next steps (local mode — no GitHub needed):"
 echo "  1. Run:  cd ${OUTPUT_DIR} && ./run.sh"

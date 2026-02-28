@@ -51,6 +51,7 @@ if [ "$MODE" = "github" ]; then
     echo ""
     echo "Checking environment..."
     check_env "GITHUB_REPO"
+    check_env "GITHUB_TOKEN_{{PROJECT_NAME_UPPER}}"
 fi
 
 echo ""

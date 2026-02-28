@@ -54,13 +54,16 @@ LOGFILE="${REPO_ROOT}/agent_logs/orchestrator_${TIMESTAMP}_${COMMIT}.log"
 echo "[$(date -u +%H:%M:%S)] Orchestrator cycle — HEAD: ${COMMIT}"
 
 # Run one Claude session
-timeout --signal=TERM --kill-after=30 "${SESSION_TIMEOUT}" \
+# Ensure child Claude runs independently (no inherited Claude Code session state)
+unset CLAUDECODE CLAUDE_CODE_SSE_PORT CLAUDE_CODE_ENTRYPOINT CLAUDE_CODE_SESSION_ACCESS_TOKEN 2>/dev/null || true
+timeout --foreground --signal=TERM --kill-after=30 "${SESSION_TIMEOUT}" \
     claude --dangerously-skip-permissions \
            -p "$(cat "${REPO_ROOT}/agents/orchestrator.md")" \
            --model "$ORCHESTRATOR_MODEL" \
            --output-format stream-json \
            --verbose \
            --include-partial-messages \
+           </dev/null \
     2>&1 | tee "$LOGFILE" || true
 
 EXIT_CODE=${PIPESTATUS[0]}

@@ -8,6 +8,10 @@
 #   4. Repeat
 #
 # The orchestrator is stateless between cycles. GitHub is the memory.
+#
+# IMPORTANT: Run with nohup to avoid SIGTTIN if launched from inside another
+# Claude Code session or a terminal that may lose its foreground process group:
+#   nohup bash run.sh > /tmp/{{TMUX_SESSION}}.log 2>&1 &
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
