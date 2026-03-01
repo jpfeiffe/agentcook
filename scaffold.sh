@@ -173,6 +173,9 @@ fill_template "${TEMPLATES_DIR}/scripts/run_orchestrator.sh" "${OUTPUT_DIR}/scri
 fill_template "${TEMPLATES_DIR}/scripts/run_agent.sh"        "${OUTPUT_DIR}/scripts/run_agent.sh"
 fill_template "${TEMPLATES_DIR}/scripts/dispatch_agent.sh"   "${OUTPUT_DIR}/scripts/dispatch_agent.sh"
 
+cp "${TEMPLATES_DIR}/.pre-commit-config.yaml" "${OUTPUT_DIR}/.pre-commit-config.yaml"
+cp "${TEMPLATES_DIR}/.gitleaks.toml" "${OUTPUT_DIR}/.gitleaks.toml"
+
 # In local mode, create ISSUES.md; in github mode it's not needed
 if [ "$MODE" = "local" ]; then
     cp "${TEMPLATES_DIR}/ISSUES.md.tmpl" "${OUTPUT_DIR}/ISSUES.md"
@@ -409,6 +412,7 @@ echo "Mode:      ${MODE}"
 echo ""
 if [ "$MODE" = "github" ]; then
 echo "Next steps:"
+echo "  0. Install uv:   curl -LsSf https://astral.sh/uv/install.sh | sh"
 echo "  1. Set env vars:"
 echo "       export GITHUB_REPO=${GITHUB_REPO}"
 echo "       export GITHUB_TOKEN_${PROJECT_NAME_UPPER}=<your-github-token>"

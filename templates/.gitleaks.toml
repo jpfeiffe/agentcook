@@ -1,0 +1,10 @@
+title = "agentcook gitleaks config"
+
+[allowlist]
+description = "Global allowlist"
+regexes = ['''(?i)\{\{[A-Z_]+\}\}''']
+paths = [
+  '''\.env\..*\.example$''',
+  '''gitleaks\.toml$''',
+  '''CLAUDE\.md$''',
+]

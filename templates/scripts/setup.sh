@@ -47,6 +47,24 @@ if [ "$MODE" = "github" ]; then
     check_cmd "curl"
 fi
 
+echo ""
+echo "Checking uv..."
+if command -v uv &>/dev/null; then
+    echo "  [OK]      uv ($(command -v uv))"
+    PASS=$((PASS + 1))
+else
+    echo "  [INSTALL] uv — installing..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+    if command -v uv &>/dev/null; then
+        echo "  [OK]      uv installed ($(command -v uv))"
+        PASS=$((PASS + 1))
+    else
+        echo "  [MISSING] uv — install manually: curl -LsSf https://astral.sh/uv/install.sh | sh"
+        FAIL=$((FAIL + 1))
+    fi
+fi
+
 if [ "$MODE" = "github" ]; then
     echo ""
     echo "Checking environment..."
@@ -84,6 +102,19 @@ echo "Setting up directories..."
 mkdir -p agent_logs worktrees
 echo "  [OK]      agent_logs/"
 echo "  [OK]      worktrees/"
+
+echo ""
+echo "Installing pre-commit hooks..."
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null || pwd)"
+if [ -f "${REPO_ROOT}/.pre-commit-config.yaml" ]; then
+    if (cd "$REPO_ROOT" && uvx pre-commit install --install-hooks) 2>/dev/null; then
+        echo "  [OK]      pre-commit hooks installed"
+    else
+        echo "  [WARN]    pre-commit install failed — hooks will not run"
+    fi
+else
+    echo "  [INFO]    No .pre-commit-config.yaml — skipping"
+fi
 
 echo ""
 echo "=== Setup Complete ==="
