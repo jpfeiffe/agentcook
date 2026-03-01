@@ -49,6 +49,7 @@ gh label create "high"          --color "e4e669" --description "High severity"  
 gh label create "medium"        --color "0075ca" --description "Medium severity"               2>/dev/null || true
 gh label create "low"           --color "cfd3d7" --description "Low severity"                  2>/dev/null || true
 gh label create "phase-1"       --color "0052cc" --description "Phase 1"                       2>/dev/null || true
+gh label create "human"         --color "d876e3" --description "Requires human sign-off — spending, releases, legal" 2>/dev/null || true
 ```
 
 Then create GitHub issues for initial work items (read SPEC.md):
@@ -85,6 +86,29 @@ gh issue comment <issue-number> --body ":x: Review failed:\n- <problem>\n\nRe-di
 gh issue edit <issue-number> --add-label "ready" --remove-label "in-progress"
 ```
 
+## 2b. Post-Merge Smoke Check
+
+After merging one or more PRs, pull main and verify the code actually works.
+Determine the right commands by examining the repo:
+
+| If you find... | Run... |
+|----------------|--------|
+| `package.json` with a `"test"` script | `npm install --prefer-offline && timeout 120 npm test` |
+| `Cargo.toml` | `cargo test` |
+| `pyproject.toml` or `requirements.txt` | `pip install -e . && pytest` |
+| `Makefile` with a `test` target | `make test` |
+| `go.mod` | `go test ./...` |
+
+Run whatever applies. Time budget: 120 seconds total. If nothing applies yet, skip.
+
+If smoke check **passes**: note in PROGRESS.md: `Smoke: PASS (date)`
+If smoke check **fails**:
+- Check for an existing open issue about the same failure before creating a duplicate
+- Create a fix issue and label it `ready`
+- Note in PROGRESS.md: `Smoke: FAIL (date) — issue #N`
+
+Diff-reviewed code is not validated code. This step is mandatory after every merge.
+
 ## 3. Check the Issue Queue
 
 ```bash
@@ -107,6 +131,46 @@ scripts/dispatch_agent.sh agent_one 1800 3 "" &
 scripts/dispatch_agent.sh agent_two 1800 4 "" &
 wait
 ```
+
+## 4b. Advance the Project
+
+When no `ready` or `in-progress` agent issues remain, the project risks stalling.
+Your job is to keep it moving. Read SPEC.md and PROGRESS.md, then:
+
+**Can an agent do the next thing?** Create one. You can write a new agent prompt
+and dispatch it in the same cycle:
+```bash
+cat > agents/<new_agent>.md << 'AGENT_EOF'
+# Identity
+...
+AGENT_EOF
+git add agents/<new_agent>.md && git commit -m "add: <new_agent>"
+scripts/dispatch_agent.sh <new_agent> <timeout> <issue-number>
+```
+
+Examples of work you can create agents for:
+- Running comprehensive validation (install, build, full test suite)
+- Setting up local dev environments or Docker stacks
+- Running simulations or load tests
+- Generating documentation or reports
+- Any technical task that doesn't require human authorization
+
+**Does the next thing require human authorization?** Create a `human`-labeled issue.
+The `human` label is specifically for actions that require the human to authorize
+spending, release, or commit to something:
+- Provisioning paid infrastructure or accounts (cloud services, API keys with billing)
+- Publishing or releasing (app store, package registry, mainnet deployment)
+- Legal or business commitments (signing agreements, choosing jurisdiction)
+- Purchasing (design assets, domains, certificates)
+
+Be specific in the issue — tell the human exactly what to do, what accounts are
+needed, and what the next agent step will be after they complete it.
+
+**Is the project done?** Say so in PROGRESS.md. If every phase is complete and
+all gates have passed, that's a valid state.
+
+Never stall silently. A project with no `ready`, `in-progress`, or `human` issues
+and incomplete phases is a bug in your reasoning.
 
 ## 5. Create Issues for New Work
 
@@ -166,7 +230,7 @@ cat > ISSUES.md << 'EOF'
 EOF
 ```
 
-Status values: `ready` | `in-progress` | `blocked` | `done`
+Status values: `ready` | `in-progress` | `blocked` | `done` | `human`
 
 ## 1. Read State
 ```bash
@@ -197,6 +261,29 @@ Mark the item done in ISSUES.md and move it to the Closed table.
 
 If it needs fixes, update the item status back to `ready` in ISSUES.md with a note.
 
+## 2b. Post-Merge Smoke Check
+
+After merging one or more PRs, pull main and verify the code actually works.
+Determine the right commands by examining the repo:
+
+| If you find... | Run... |
+|----------------|--------|
+| `package.json` with a `"test"` script | `npm install --prefer-offline && timeout 120 npm test` |
+| `Cargo.toml` | `cargo test` |
+| `pyproject.toml` or `requirements.txt` | `pip install -e . && pytest` |
+| `Makefile` with a `test` target | `make test` |
+| `go.mod` | `go test ./...` |
+
+Run whatever applies. Time budget: 120 seconds total. If nothing applies yet, skip.
+
+If smoke check **passes**: note in PROGRESS.md: `Smoke: PASS (date)`
+If smoke check **fails**:
+- Check for an existing open issue about the same failure before creating a duplicate
+- Create a fix issue with status `ready`
+- Note in PROGRESS.md: `Smoke: FAIL (date) — item #N`
+
+Diff-reviewed code is not validated code. This step is mandatory after every merge.
+
 ## 3. Check the Issue Queue
 
 Read `ISSUES.md`. Find items with status `ready`.
@@ -223,6 +310,46 @@ scripts/dispatch_agent.sh agent_one 1800 1 "" &
 scripts/dispatch_agent.sh agent_two 1800 2 "" &
 wait
 ```
+
+## 4b. Advance the Project
+
+When no `ready` or `in-progress` agent issues remain, the project risks stalling.
+Your job is to keep it moving. Read SPEC.md and PROGRESS.md, then:
+
+**Can an agent do the next thing?** Create one. You can write a new agent prompt
+and dispatch it in the same cycle:
+```bash
+cat > agents/<new_agent>.md << 'AGENT_EOF'
+# Identity
+...
+AGENT_EOF
+git add agents/<new_agent>.md && git commit -m "add: <new_agent>"
+scripts/dispatch_agent.sh <new_agent> <timeout> <item-number>
+```
+
+Examples of work you can create agents for:
+- Running comprehensive validation (install, build, full test suite)
+- Setting up local dev environments or Docker stacks
+- Running simulations or load tests
+- Generating documentation or reports
+- Any technical task that doesn't require human authorization
+
+**Does the next thing require human authorization?** Create a `human`-status item.
+The `human` status is specifically for actions that require the human to authorize
+spending, release, or commit to something:
+- Provisioning paid infrastructure or accounts (cloud services, API keys with billing)
+- Publishing or releasing (app store, package registry, mainnet deployment)
+- Legal or business commitments (signing agreements, choosing jurisdiction)
+- Purchasing (design assets, domains, certificates)
+
+Be specific in the item — tell the human exactly what to do, what accounts are
+needed, and what the next agent step will be after they complete it.
+
+**Is the project done?** Say so in PROGRESS.md. If every phase is complete and
+all gates have passed, that's a valid state.
+
+Never stall silently. A project with no `ready`, `in-progress`, or `human` items
+and incomplete phases is a bug in your reasoning.
 
 ## 5. Create New Work Items
 
@@ -267,5 +394,8 @@ Only the orchestrator writes these:
 6. Prefer parallel dispatch for independent work
 7. When you find an unresolved decision, add it to `OPEN_QUESTIONS.md` and make a reasonable default
 8. Write detailed reports to `docs/` — keep root clean
+9. Phase gate order: builder agents → test_agent + audit_agent (parallel) → red_agent → smoke check PASS on main. Reviewed ≠ validated — code must execute.
+10. After merging any PR, run the post-merge smoke check (step 2b). If it fails, create a fix issue.
+11. When all agent work is done, keep the project moving: create new agents for technical work, or `human`-labeled issues for authorization gates. Never stall silently.
 
 Begin.
