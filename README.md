@@ -1,6 +1,6 @@
 # agentcook
 
-Prompt-as-package for multi-agent projects. No install. No dependencies. Just Claude Code.
+Build multi-agent projects with Claude Code using opinionated orchestrator behavior, not just prompt templates.
 
 ---
 
@@ -9,6 +9,20 @@ Prompt-as-package for multi-agent projects. No install. No dependencies. Just Cl
 agentcook is a CLAUDE.md + reference patterns that teach Claude how to build multi-agent software systems from a specification. There's no CLI, no `pip install`, no runtime to maintain. You open Claude Code in this directory, describe what you want, and it builds it.
 
 The real value isn't code generation — it's **encoded knowledge**: tmux+worktree architecture, orchestrator loop patterns, dispatch models, state file conventions, pre-commit security setup, and orchestrator personality traits (curiosity, skepticism, human-in-the-loop gates, graduated autonomy).
+
+---
+
+## Why this is different
+
+Generated orchestrators aren't just task dispatchers. They include four behavioral layers that shape how work gets done:
+
+**Curiosity** — After merging a PR: "What surprised me?" After completing a phase: "What assumptions haven't been tested?" When an agent fails: "Is this the agent's bug or my misunderstanding?"
+
+**Skepticism** — Post-merge smoke checks are mandatory. Maker-checker pattern: audit_agent reviews, then red_agent attacks. "The agent said tests pass — let me verify."
+
+**Human gates** — The orchestrator knows what decisions require a human: spending money, publishing releases, legal agreements, data handling. It creates labeled issues with consequence previews: "If approved: X happens. If rejected: Y instead."
+
+**Graduated autonomy** — Code formatting? Agent decides. Architecture within a component? Agent decides + documents. External API design? Orchestrator evaluates. Infrastructure spending? Human decides. The right level of oversight for each decision type.
 
 ---
 
@@ -79,20 +93,6 @@ HOST  (run.sh — while-true loop, sleep between cycles)
 
 ---
 
-## The orchestrator personality
-
-Generated orchestrators aren't just task dispatchers. They have four behavioral layers:
-
-**Curiosity** — After merging a PR: "What surprised me?" After completing a phase: "What assumptions haven't been tested?" When an agent fails: "Is this the agent's bug or my misunderstanding?"
-
-**Skepticism** — Post-merge smoke checks are mandatory. Maker-checker pattern: audit_agent reviews, then red_agent attacks. "The agent said tests pass — let me verify."
-
-**Human gates** — The orchestrator knows what decisions require a human: spending money, publishing releases, legal agreements, data handling. It creates labeled issues with consequence previews: "If approved: X happens. If rejected: Y instead."
-
-**Graduated autonomy** — Code formatting? Agent decides. Architecture within a component? Agent decides + documents. External API design? Orchestrator evaluates. Infrastructure spending? Human decides. The right level of oversight for each decision type.
-
----
-
 ## Writing a spec
 
 See `SPEC_TEMPLATE.md` for the full format. At minimum:
@@ -137,9 +137,10 @@ The richer the spec, the better the generated agents. But a minimal spec works �
 
 ## Examples
 
+- `examples/neutral-saas-spec-excerpt.md` — neutral B2B SaaS example for first-time visitors
 - `examples/fooapp/SPEC.md` — minimal task management app
-- `examples/aegis-spec-excerpt.md` — complex trust/security domain
-- `examples/bishopbuddy-spec-excerpt.md` — consumer product domain
+- `examples/aegis-spec-excerpt.md` — real trust/security project excerpt
+- `examples/bishopbuddy-spec-excerpt.md` — real consumer product excerpt
 
 ---
 
