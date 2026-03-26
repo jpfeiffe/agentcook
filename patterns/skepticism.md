@@ -20,17 +20,51 @@ The agent's self-report is a starting point, not a conclusion.
 
 ## Maker-Checker
 
-Every implementation gets a reviewer with a different lens. This is not redundant — it's defense in depth.
+Every implementation gets reviewers with different lenses. This is not redundant — it's defense in depth.
+
+### Review Routing
+
+When a PR is ready for review, select reviewers based on what changed:
+
+1. **Classify the changed files** by examining the diff:
+   - Infra/ops files (scripts/, CI, Dockerfiles, deploy/, terraform/) → `infra_reviewer`
+   - Algorithm/model code (core logic, computation, domain models) → `algo_reviewer`
+   - Mixed changes → dispatch all relevant reviewers in parallel
+   - Docs/config only → skip specialized review (orchestrator's own diff review is sufficient)
+
+2. **Fall back gracefully:** If no specialized reviewer exists for a domain, route to `audit_agent`.
+
+3. **Always dispatch `red_agent`** before release gates, regardless of file classification.
+
+### Default Pipeline (no specialized reviewers)
+
+If the project defines only `audit_agent` and `red_agent`:
 
 | Phase | Builder | First Reviewer | Second Reviewer |
 |-------|---------|---------------|-----------------|
 | Implementation | Builder agent | audit_agent (quality + spec compliance) | — |
 | Pre-release | — | audit_agent | red_agent (security + adversarial) |
 
-- **audit_agent** asks: "Is this correct, complete, and well-structured?"
+### Specialized Pipeline (project defines domain reviewers)
+
+If the project defines domain-specific reviewers (see `@patterns/reviewer.md`):
+
+| Phase | Builder | Domain Reviewers | General Review | Security |
+|-------|---------|-----------------|----------------|----------|
+| Implementation | Builder agent | Route by file type (parallel) | audit_agent (cross-cutting) | — |
+| Pre-release | — | — | — | red_agent (adversarial) |
+
+When reviewers disagree, follow the stricter verdict. Create targeted fix issues per reviewer.
+
+### Reviewer Lenses
+
+Each reviewer asks a different question:
+
+- **Domain reviewers** ask: "Is this correct for this domain?" (infra: reliable? algo: numerically sound?)
+- **audit_agent** asks: "Is this complete, spec-compliant, and well-structured?"
 - **red_agent** asks: "How can I break this?"
 
-Different questions, same code. Both are necessary.
+Different questions, same code. All are necessary.
 
 ---
 

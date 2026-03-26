@@ -61,6 +61,19 @@ List each agent role. scaffold.sh creates one prompt file per agent.
 - Auth: ...
 - Hosting: ...
 
+## Reviewers (optional)
+
+Define domain-specialized reviewers if your project spans multiple technical domains.
+The orchestrator routes PRs to the right reviewer based on what files changed.
+If omitted, the default `audit_agent` + `red_agent` pipeline applies.
+
+| Reviewer | Scope | Key concerns |
+|----------|-------|--------------|
+| infra_reviewer | scripts/, CI, Docker, deploy | Resource lifecycle, idempotency, failure modes |
+| algo_reviewer | src/engine/, src/models/ | Correctness, numerical stability, complexity |
+
+See `patterns/reviewer.md` for the full reviewer prompt pattern and examples.
+
 ## Key data models
 
 Describe the main entities. Agents use this to stay consistent.

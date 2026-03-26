@@ -151,8 +151,18 @@ After an agent reports success, independently verify the claim:
 - Check the diff matches the issue requirements
 - Look for things the agent didn't mention (new dependencies, changed interfaces, deleted tests)
 
-## Maker-Checker
-Every implementation gets a reviewer with a different lens:
+## Maker-Checker — Review Routing
+When a PR is ready for review, select reviewers based on what changed:
+- Classify changed files: infra/ops → infra_reviewer, algorithm/domain → algo_reviewer, mixed → dispatch relevant reviewers in parallel
+- If no specialized reviewer exists for a domain, route to audit_agent
+- Always dispatch red_agent before release gates, regardless of file type
+- Docs/config-only changes: skip specialized review, orchestrator's own diff review is sufficient
+
+When reviewers disagree, follow the stricter verdict. Create targeted fix issues per reviewer.
+
+See `@patterns/reviewer.md` for the full reviewer prompt pattern, routing rules, and examples.
+
+Fallback: if no specialized reviewers are defined, use the default pipeline:
 - After builder agents → audit_agent reviews for quality and spec compliance
 - After audit_agent → red_agent attacks for security
 - Different lenses, same code. This is not redundant — it's defense in depth.
@@ -339,7 +349,7 @@ These rules are the merged, deduplicated best-of from production orchestrators (
 6. Prefer parallel dispatch for independent work.
 7. When you find an unresolved decision, add it to OPEN_QUESTIONS.md and make a reasonable default.
 8. Write detailed reports to docs/ — keep the repo root clean.
-9. Phase gate order: builder agents → test/audit (parallel) → red_agent → smoke check PASS. Reviewed ≠ validated.
+9. Phase gate order: builder agents → domain reviewers + audit (parallel, routed by file type) → red_agent → smoke check PASS. Reviewed ≠ validated.
 10. After merging any PR, run the post-merge smoke check. If it fails, create a fix issue.
 11. When all agent work is done, keep the project moving: create new work or human gates. Never stall silently.
 12. Question your own dispatch decisions. After each cycle, briefly note: what did I dispatch, why, and what could I have done differently?

@@ -54,6 +54,9 @@ A complete project with this structure:
 ### Orchestrator Prompt
 @patterns/orchestrator.md
 
+### Reviewer Prompts
+@patterns/reviewer.md
+
 ### Security and Tooling
 @patterns/setup.md
 
@@ -88,6 +91,7 @@ Read the spec and determine what agents are needed. Guidelines:
 - **One agent per distinct responsibility.** If two tasks share no code and no data model, they're separate agents.
 - **Don't over-split.** If two tasks are tightly coupled (e.g., API endpoints and their tests), one agent can handle both.
 - **Always include:** at least one builder agent, an `audit_agent` (code review), and a `red_agent` (security).
+- **Consider specialized reviewers** when the project spans multiple technical domains (e.g., `infra_reviewer` for ops/deploy code, `algo_reviewer` for core logic). See `@patterns/reviewer.md`.
 - **Consider:** a `test_agent` for projects with complex test requirements, a `legal_agent` for projects with licensing/compliance needs.
 - **Typical range:** 4-10 agents for most projects.
 
@@ -106,6 +110,7 @@ Read the spec and determine what agents are needed. Guidelines:
 | Standard builder agent | 1800s (30 min) | Typical implementation scope |
 | Complex builder agent | 3600s (60 min) | Large scope (full UI, simulation framework) |
 | Audit agent | 1200s (20 min) | Read-only, faster |
+| Specialized reviewer | 1200s (20 min) | Read-only, domain-focused review |
 | Red agent | 1800s (30 min) | Needs time for adversarial reasoning |
 | Legal agent | 1200s (20 min) | Read-only review |
 
