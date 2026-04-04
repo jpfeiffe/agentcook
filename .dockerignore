@@ -1,0 +1,5 @@
+.git
+.worktrees
+agent_logs
+.venv
+__pycache__
