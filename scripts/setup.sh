@@ -85,12 +85,12 @@ fi
 echo ""
 echo "Checking shell scripts..."
 SHELL_FAIL=0
-for f in $(find "$REPO_ROOT/archive/templates/scripts" -name '*.sh' 2>/dev/null); do
+while IFS= read -r -d '' f; do
     if ! shellcheck -e SC1091,SC2034,SC2153,SC2016 "$f" >/dev/null 2>&1; then
         echo "  [WARN]    shellcheck issues in $(basename "$f")"
         SHELL_FAIL=1
     fi
-done
+done < <(find "$REPO_ROOT/archive/templates/scripts" -name '*.sh' -print0 2>/dev/null)
 if [ "$SHELL_FAIL" -eq 0 ]; then
     echo "  [OK]      All template scripts pass shellcheck"
 fi
